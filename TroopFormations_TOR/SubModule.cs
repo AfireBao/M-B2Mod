@@ -33,15 +33,26 @@ public class SubModule : MBSubModuleBase
         base.OnBeforeInitialModuleScreenSetAsRoot();
         ApplyPatches();
         InformationManager.DisplayMessage(
-            new InformationMessage("Troop Formations TOR loaded (fork of Better Troop Formations)", Colors.Green));
+            new InformationMessage("Troop Formations TOR v1.0.8 loaded", Colors.Green));
     }
 
     protected override void InitializeGameStarter(Game game, IGameStarter gameStarter)
     {
+        // New campaign / load: drop stale battle UI references from the previous session.
+        OrderOfBattlePatch.ClearSessionState();
+        TroopFormationsBehavior.ClearInstance();
+
         if (game.GameType is Campaign && gameStarter is CampaignGameStarter campaignStarter)
         {
             campaignStarter.AddBehavior(new TroopFormationsBehavior());
         }
+    }
+
+    public override void OnGameEnd(Game game)
+    {
+        OrderOfBattlePatch.ClearSessionState();
+        TroopFormationsBehavior.ClearInstance();
+        base.OnGameEnd(game);
     }
 
     public override void OnMissionBehaviorInitialize(Mission mission)

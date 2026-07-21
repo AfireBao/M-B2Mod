@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using Bannerlord.UIExtenderEx.Attributes;
@@ -16,9 +15,9 @@ public class TroopFormationsViewModel : BaseViewModelMixin<PartyVM>
     private SelectorVM<SelectorItemVM>? _characterFormationSelector;
 
     [DataSourceProperty]
-    public SelectorVM<SelectorItemVM> CharacterFormationSelector
+    public SelectorVM<SelectorItemVM>? CharacterFormationSelector
     {
-        get => _characterFormationSelector!;
+        get => _characterFormationSelector;
         set
         {
             if (value == _characterFormationSelector)
@@ -35,8 +34,12 @@ public class TroopFormationsViewModel : BaseViewModelMixin<PartyVM>
         : base(vm)
     {
         _partyVm = vm;
-        TroopFormationsBehavior behavior = TroopFormationsBehavior.Instance
-            ?? throw new InvalidOperationException("TroopFormationsBehavior is not initialized.");
+
+        TroopFormationsBehavior? behavior = TroopFormationsBehavior.Instance;
+        if (behavior == null)
+        {
+            return;
+        }
 
         int selected = behavior.CurrentCharacterFormation(_partyVm.CurrentCharacter?.Character);
         CharacterFormationSelector = new SelectorVM<SelectorItemVM>(

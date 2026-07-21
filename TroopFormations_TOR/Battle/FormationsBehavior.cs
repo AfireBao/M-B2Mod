@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
@@ -14,7 +15,25 @@ public class FormationsBehavior : MissionView
     public override void OnAgentCreated(Agent agent)
     {
         base.OnAgentCreated(agent);
-        TryAssignAgent(agent);
+        TryAssignAgent(agent, refreshUi: false, switchFormationType: false);
+    }
+
+    public override void OnMissionModeChange(MissionMode oldMissionMode, bool atStart)
+    {
+        base.OnMissionModeChange(oldMissionMode, atStart);
+        // Leaving deployment/battle: drop OOB VM so load/campaign teardown cannot touch it.
+        if (Mission.Current != null
+            && Mission.Current.Mode != MissionMode.Deployment
+            && Mission.Current.Mode != MissionMode.Battle)
+        {
+            OrderOfBattlePatch.ClearSessionState();
+        }
+    }
+
+    protected override void OnEndMission()
+    {
+        OrderOfBattlePatch.ClearSessionState();
+        base.OnEndMission();
     }
 
     public override void OnTeamDeployed(Team team)
@@ -25,11 +44,13 @@ public class FormationsBehavior : MissionView
             return;
         }
 
-        // OOB UI can lag behind agent moves; refresh a few times like the original mod.
-        for (int i = 0; i < 3; i++)
+        var prefs = Campaign.Current?.PlayerFormationPreferences;
+        if (prefs == null || prefs.Count == 0)
         {
-            RefreshOrderOfBattleUi();
+            return;
         }
+
+        OrderOfBattlePatch.ApplyAssignments(moveAgents: true, heavyUiRefresh: false);
     }
 
     internal static bool IsSupportedMission()
@@ -38,20 +59,117 @@ public class FormationsBehavior : MissionView
         return mission != null && (mission.IsFieldBattle || mission.IsSiegeBattle);
     }
 
-    internal static void TryAssignAgent(Agent agent)
+    /// <summary>
+    /// Troop combat role (infantry/ranged/...) for switching OOB formation type.
+    /// Preference FormationClass is a slot index, not this role.
+    /// </summary>
+    internal static FormationClass GetTroopRoleClass(CharacterObject character)
     {
-        if (!IsSupportedMission()
-            || agent == null
-            || !agent.IsHuman
-            || agent.IsHero
-            || agent.Team != Mission.Current.PlayerTeam
-            || agent.Character is not CharacterObject character
-            || !TroopFormationsBehavior.TryGetAssignedFormation(character, out FormationClass formationClass))
+        return FormationClassExtensions.FallbackClass(character.DefaultFormationClass);
+    }
+
+    /// <summary>
+    /// Switch formation slot X to match troop A's combat type before moving troops into it.
+    /// </summary>
+    internal static void EnsureFormationMatchesTroopType(
+        OrderOfBattleFormationItemVM? item,
+        Formation formation,
+        CharacterObject character)
+    {
+        if (formation == null || character == null || item == null)
         {
             return;
         }
 
-        int index = (int)formationClass;
+        FormationClass troopRole = GetTroopRoleClass(character);
+        DeploymentFormationClass desired =
+            OrderOfBattleFormationExtensions.GetOrderOfBattleFormationClass(troopRole);
+
+        if (item.GetOrderOfBattleClass() == desired
+            && item.OrderOfBattleFormationClassInt == (int)desired)
+        {
+            return;
+        }
+
+        try
+        {
+            item.RefreshFormation(formation, desired, false);
+            item.OrderOfBattleFormationClassInt = (int)desired;
+
+            if (item.Classes is { Count: > 0 })
+            {
+                item.Classes[0].Class = troopRole;
+                item.Classes[0].IsUnset = false;
+            }
+
+            item.UpdateAdjustable();
+        }
+        catch (Exception)
+        {
+            // OOB UI may not be fully ready; type switch is best-effort.
+        }
+    }
+
+    internal static void ApplyFormationClassToSlot(
+        OrderOfBattleFormationItemVM? item,
+        Formation formation,
+        FormationClass troopRole)
+    {
+        if (item == null || formation == null)
+        {
+            return;
+        }
+
+        DeploymentFormationClass desired =
+            OrderOfBattleFormationExtensions.GetOrderOfBattleFormationClass(troopRole);
+
+        if (item.GetOrderOfBattleClass() == desired
+            && item.OrderOfBattleFormationClassInt == (int)desired)
+        {
+            return;
+        }
+
+        try
+        {
+            item.RefreshFormation(formation, desired, false);
+            item.OrderOfBattleFormationClassInt = (int)desired;
+            if (item.Classes is { Count: > 0 })
+            {
+                item.Classes[0].Class = troopRole;
+                item.Classes[0].IsUnset = false;
+            }
+
+            item.UpdateAdjustable();
+        }
+        catch (Exception)
+        {
+        }
+    }
+
+    /// <summary>
+    /// Move agent to preferred slot. agent.Formation setter internally calls RemoveUnit,
+    /// which can throw IndexOutOfRangeException during OOB init — catch and skip.
+    /// </summary>
+    internal static void TryAssignAgent(Agent agent, bool refreshUi, bool switchFormationType = true)
+    {
+        if (OrderOfBattlePatch.IsApplying && refreshUi)
+        {
+            return;
+        }
+
+        if (!IsSupportedMission()
+            || agent == null
+            || !agent.IsHuman
+            || agent.IsHero
+            || !agent.IsActive()
+            || agent.Team != Mission.Current.PlayerTeam
+            || agent.Character is not CharacterObject character
+            || !TroopFormationsBehavior.TryGetAssignedFormation(character, out FormationClass formationSlot))
+        {
+            return;
+        }
+
+        int index = (int)formationSlot;
         if (index < 0 || index >= TroopFormationsBehavior.FormationCount)
         {
             return;
@@ -64,27 +182,94 @@ public class FormationsBehavior : MissionView
             return;
         }
 
-        Formation? previous = agent.Formation;
-        if (previous != null && previous != target)
+        if (switchFormationType)
         {
-            previous.RemoveUnit(agent);
+            OrderOfBattleFormationItemVM? item = GetFormationItem(index);
+            EnsureFormationMatchesTroopType(item, target, character);
         }
 
-        target.AddUnit(agent);
-        agent.Formation = target;
-
-        if (OrderOfBattlePatch.Instance != null)
+        try
         {
-            if (previous != null)
-            {
-                OrderOfBattleFormationExtensions.Refresh(previous);
-            }
+            agent.Formation = target;
+        }
+        catch (Exception)
+        {
+            // Never RemoveUnit/AddUnit — that corrupts LineFormation and can AV on later save load.
+            return;
+        }
 
-            OrderOfBattleFormationExtensions.Refresh(target);
+        if (refreshUi && OrderOfBattlePatch.Instance != null)
+        {
+            try
+            {
+                OrderOfBattleFormationExtensions.Refresh(target);
+            }
+            catch (Exception)
+            {
+            }
         }
     }
 
-    private static void RefreshOrderOfBattleUi()
+    /// <summary>
+    /// Move any non-hero agent to a formation index (used to park unassigned troops
+    /// outside preferred slots).
+    /// </summary>
+    internal static void TryMoveAgentToSlot(Agent agent, int slotIndex, bool switchFormationType)
+    {
+        if (!IsSupportedMission()
+            || agent == null
+            || !agent.IsHuman
+            || agent.IsHero
+            || !agent.IsActive()
+            || agent.Team != Mission.Current.PlayerTeam
+            || slotIndex < 0
+            || slotIndex >= TroopFormationsBehavior.FormationCount)
+        {
+            return;
+        }
+
+        Formation? target = Mission.Current.PlayerTeam.FormationsIncludingEmpty
+            .FirstOrDefault(f => f.Index == slotIndex);
+        if (target == null || agent.Formation == target)
+        {
+            return;
+        }
+
+        if (switchFormationType && agent.Character is CharacterObject character)
+        {
+            OrderOfBattleFormationItemVM? item = GetFormationItem(slotIndex);
+            EnsureFormationMatchesTroopType(item, target, character);
+        }
+
+        try
+        {
+            agent.Formation = target;
+        }
+        catch (Exception)
+        {
+            return;
+        }
+    }
+
+    internal static OrderOfBattleFormationItemVM? GetFormationItem(int index)
+    {
+        if (OrderOfBattlePatch.Instance == null)
+        {
+            return null;
+        }
+
+        var allFormations = Traverse.Create(OrderOfBattlePatch.Instance)
+            .Field("_allFormations")
+            .GetValue<List<OrderOfBattleFormationItemVM>>();
+        if (allFormations == null || index < 0 || index >= allFormations.Count)
+        {
+            return null;
+        }
+
+        return allFormations[index];
+    }
+
+    internal static void RefreshOrderOfBattleUi(bool invokeTick)
     {
         OrderOfBattleVM? oob = OrderOfBattlePatch.Instance;
         if (oob == null)
@@ -92,21 +277,29 @@ public class FormationsBehavior : MissionView
             return;
         }
 
-        var allFormations = Traverse.Create(oob).Field("_allFormations").GetValue<List<OrderOfBattleFormationItemVM>>();
+        var allFormations = Traverse.Create(oob)
+            .Field("_allFormations")
+            .GetValue<List<OrderOfBattleFormationItemVM>>();
         if (allFormations == null)
         {
             return;
         }
 
-        foreach (OrderOfBattleFormationItemVM item in allFormations)
+        try
         {
-            item.RefreshFormation(item.Formation, DeploymentFormationClass.Unset, false);
-            item.UpdateAdjustable();
-        }
+            // Avoid RefreshFormation here — it re-triggers mass redistribute / native churn.
+            foreach (OrderOfBattleFormationItemVM item in allFormations)
+            {
+                item.OnSizeChanged();
+                item.UpdateAdjustable();
+            }
 
-        Traverse.Create(oob).Method("RefreshWeights").GetValue();
-        Traverse.Create(oob).Method("OnUnitDeployed").GetValue();
-        Traverse.Create(oob).Field("_isMissingFormationsDirty").SetValue(false);
-        Traverse.Create(oob).Method("Tick").GetValue();
+            Traverse.Create(oob).Method("RefreshWeights").GetValue();
+            Traverse.Create(oob).Method("OnUnitDeployed").GetValue();
+            Traverse.Create(oob).Field("_isMissingFormationsDirty").SetValue(false);
+        }
+        catch (Exception)
+        {
+        }
     }
 }

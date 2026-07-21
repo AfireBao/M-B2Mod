@@ -18,6 +18,11 @@ public class TroopFormationsBehavior : CampaignBehaviorBase
 
     public static TroopFormationsBehavior? Instance { get; private set; }
 
+    public static void ClearInstance()
+    {
+        Instance = null;
+    }
+
     private List<(string Icon, TextObject Hint)>? _formationNames;
 
     public TroopFormationsBehavior()

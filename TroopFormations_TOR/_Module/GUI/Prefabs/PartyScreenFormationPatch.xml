@@ -1,4 +1,4 @@
-<!-- TOR-compatible formation picker (drawn late so it stays above TOR party overlays). -->
+<!-- TOR-compatible formation picker (appended late so it stays above TOR party overlays). -->
 <DummyRoot>
   <Widget Id="TroopFormationsTorOverlay"
           VisualDefinition="RightMenu"
@@ -7,8 +7,8 @@
           SuggestedWidth="!Party.Formation.Item.Width"
           HorizontalAlignment="Center"
           VerticalAlignment="Top"
-          MarginLeft="300"
-          MarginTop="220"
+          MarginLeft="500"
+          MarginTop="150"
           IsVisible="@IsCurrentCharacterFormationEnabled">
     <Children>
       <PartyFormationDropdownWidget DataSource="{CharacterFormationSelector}"

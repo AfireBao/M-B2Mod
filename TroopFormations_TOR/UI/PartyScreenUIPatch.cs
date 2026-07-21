@@ -4,16 +4,14 @@ using Bannerlord.UIExtenderEx.Prefabs2;
 namespace TroopFormations_TOR;
 
 /// <summary>
-/// TOR replaces PartyScreen.xml and comments out formation UI.
-/// Insert late in the Children list so the control draws above TOR overlays.
+/// TOR comments out the vanilla formation picker. Re-insert after a late sibling
+/// so the control draws above TOR overlays — never use an Index past child count
+/// (TOR PartyScreen has ~14 children; Index=100 caused native AV on startup).
 /// </summary>
-[PrefabExtension("PartyScreen", "descendant::PartyScreenWidget[@Id='PartyScreen']/Children")]
+[PrefabExtension("PartyScreen", "descendant::PartyTroopManagerPopUp[@Id='RecruitPopup']")]
 public class PartyScreenUIPatch : PrefabExtensionInsertPatch
 {
-    public override InsertType Type => InsertType.Child;
-
-    // High index => append near end of TOR PartyScreen children (drawn later / on top).
-    public override int Index => 100;
+    public override InsertType Type => InsertType.Append;
 
     [PrefabExtensionFileName(true)]
     public string File => "PartyScreenFormationPatch";
