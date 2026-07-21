@@ -1,0 +1,120 @@
+<!-- TOR-compatible formation picker (drawn late so it stays above TOR party overlays). -->
+<DummyRoot>
+  <Widget Id="TroopFormationsTorOverlay"
+          VisualDefinition="RightMenu"
+          WidthSizePolicy="Fixed"
+          HeightSizePolicy="CoverChildren"
+          SuggestedWidth="!Party.Formation.Item.Width"
+          HorizontalAlignment="Center"
+          VerticalAlignment="Top"
+          MarginLeft="300"
+          MarginTop="220"
+          IsVisible="@IsCurrentCharacterFormationEnabled">
+    <Children>
+      <PartyFormationDropdownWidget DataSource="{CharacterFormationSelector}"
+                                    WidthSizePolicy="StretchToParent"
+                                    HeightSizePolicy="CoverChildren"
+                                    Button="DropdownButton"
+                                    CurrentSelectedIndex="@SelectedIndex"
+                                    ListPanel="ClipRect\DropdownListPanel"
+                                    ListStateChanger="ClipRect"
+                                    RichTextWidget="DropdownButton\SelectedTextWidget"
+                                    SeperatorStateChanger="Seperator">
+        <Children>
+          <ButtonWidget Id="DropdownButton"
+                        DoNotPassEventsToChildren="true"
+                        WidthSizePolicy="Fixed"
+                        HeightSizePolicy="Fixed"
+                        SuggestedWidth="!Party.Formation.MainButton.Width"
+                        SuggestedHeight="!Party.Formation.MainButton.Height"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Top"
+                        Brush="Party.Formation.MainButton">
+            <Children>
+              <RichTextWidget Id="SelectedTextWidget"
+                              WidthSizePolicy="StretchToParent"
+                              HeightSizePolicy="StretchToParent"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center"
+                              PositionYOffset="-10"
+                              PositionXOffset="0"
+                              Brush.FontSize="50"
+                              Brush.TextVerticalAlignment="Center"
+                              Text=" " />
+              <HintWidget DataSource="{..\FormationHint}"
+                          DoNotAcceptEvents="true"
+                          WidthSizePolicy="StretchToParent"
+                          HeightSizePolicy="StretchToParent"
+                          Command.HoverBegin="ExecuteBeginHint"
+                          Command.HoverEnd="ExecuteEndHint" />
+            </Children>
+          </ButtonWidget>
+
+          <DelayedStateChanger Id="ClipRect"
+                               WidthSizePolicy="Fixed"
+                               HeightSizePolicy="Fixed"
+                               SuggestedWidth="58"
+                               SuggestedHeight="!FormationClipRect.Height"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Top"
+                               MarginTop="87"
+                               ClipContents="true"
+                               TargetWidget="DropdownListPanel">
+            <Children>
+              <ListPanel Id="DropdownListPanel"
+                         DataSource="{ItemList}"
+                         VisualDefinition="FormationListPanel"
+                         WidthSizePolicy="CoverChildren"
+                         HeightSizePolicy="CoverChildren"
+                         HorizontalAlignment="Center"
+                         MarginTop="!FormationListPanel.MarginTop"
+                         IsVisible="false"
+                         StackLayout.LayoutMethod="VerticalBottomToTop">
+                <ItemTemplate>
+                  <ButtonWidget DoNotPassEventsToChildren="true"
+                                WidthSizePolicy="Fixed"
+                                HeightSizePolicy="Fixed"
+                                SuggestedWidth="!Party.Formation.Item.Width"
+                                SuggestedHeight="!Party.Formation.Item.Height"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Bottom"
+                                MarginTop="4"
+                                MarginBottom="4"
+                                Brush="Party.Formation.Item"
+                                ButtonType="Radio"
+                                DominantSelectedState="false">
+                    <Children>
+                      <RichTextWidget WidthSizePolicy="StretchToParent"
+                                      HeightSizePolicy="StretchToParent"
+                                      HorizontalAlignment="Center"
+                                      PositionXOffset="0"
+                                      Brush.FontSize="50"
+                                      Brush.TextVerticalAlignment="Center"
+                                      Brush.TextHorizontalAlignment="Center"
+                                      Text="@StringItem" />
+                      <HintWidget DataSource="{Hint}"
+                                  WidthSizePolicy="StretchToParent"
+                                  HeightSizePolicy="StretchToParent"
+                                  Command.HoverBegin="ExecuteBeginHint"
+                                  Command.HoverEnd="ExecuteEndHint" />
+                    </Children>
+                  </ButtonWidget>
+                </ItemTemplate>
+              </ListPanel>
+            </Children>
+          </DelayedStateChanger>
+
+          <DelayedStateChanger Id="Seperator"
+                               VisualDefinition="FormationSeperator"
+                               WidthSizePolicy="Fixed"
+                               HeightSizePolicy="Fixed"
+                               SuggestedWidth="!Party.Formation.Seperator.Width"
+                               SuggestedHeight="!Party.Formation.Seperator.Height"
+                               HorizontalAlignment="Center"
+                               MarginTop="75"
+                               Brush="Party.Formation.Seperator" />
+        </Children>
+      </PartyFormationDropdownWidget>
+    </Children>
+  </Widget>
+</DummyRoot>

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  首次上传到创意工坊（新建物品）
+
+  用法（Steam 保持登录）：
+  1. 确认 Modules 里模组已是最新 Release
+  2. 在「管理员/普通」命令行进入：
+     F:\SteamLibrary\steamapps\common\Mount & Blade II Bannerlord\bin\Win64_Shipping_Client
+  3. 执行：
+     TaleWorlds.MountAndBlade.SteamWorkshop.exe "G:\M&B2Mod\TORCompanionAssimilationSkip\workshop\UploadNew.xml"
+
+  说明：
+  - 标题取自 SubModule.xml 的 <Name>（TOR Companion Assimilation Skip）
+  - ModuleFolder / Image 必须是绝对路径
+  - Visibility 可选：Private / FriendsOnly / Public（首次建议 Private，测完再改）
+  - 上传成功后控制台会打印 Item ID；更新时填进 UpdateExisting.xml
+  - 同目录生成的 steam_workshop_uploader.txt 是运行日志，不是本配置文件
+-->
+<Tasks>
+  <CreateItem/>
+  <UpdateItem>
+    <ModuleFolder Value="F:\SteamLibrary\steamapps\common\Mount &amp; Blade II Bannerlord\Modules\TORCompanionAssimilationSkip"/>
+    <ItemDescription Value="[h1]TOR Companion Assimilation Skip[/h1]
+
+阻止 The Old Realms 的文化同化换兵作用于「玩家招募的流浪者同伴」。
+
+异族同伴带着你的本族兵时，战后/招兵/驻军 tick 不再被按氏族模板同档随机替换（例如矮人兄弟线互换）。
+
+[b]需求[/b]
+[list]
+[*] Bannerlord v1.3.15（与 TOR 一致）
+[*] TOR_Core
+[*] Bannerlord.Harmony
+[/list]
+
+[b]范围[/b]
+[list]
+[*] 仅跳过 Hero.IsPlayerCompanion
+[*] 不影响 AI 领主同化
+[*] 主角本来就被 TOR 跳过
+[/list]
+
+非官方补丁，与 The Old Realms 无隶属关系。"/>
+    <Tags>
+      <Tag Value="Singleplayer"/>
+      <Tag Value="Fantasy"/>
+      <Tag Value="1.3.15"/>
+    </Tags>
+    <Image Value="F:\SteamLibrary\steamapps\common\Mount &amp; Blade II Bannerlord\Modules\TORCompanionAssimilationSkip\Preview.png"/>
+    <Visibility Value="Private"/>
+  </UpdateItem>
+</Tasks>
